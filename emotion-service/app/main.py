@@ -8,10 +8,10 @@ import uuid
 
 app = FastAPI()
 
-# Enable CORS so your frontend can access the backend
+# Enable CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Replace with your frontend URL for production
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -21,18 +21,15 @@ app.add_middleware(
 async def detect_emotion(file: UploadFile = File(...)):
     filename = f"{uuid.uuid4()}.jpg"
 
-    # Save uploaded file temporarily
+    # Save file temporarily
     with open(filename, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
     try:
-        # Perform emotion analysis
-        result = DeepFace.analyze(img_path=filename, actions=["emotion"])
+        result = DeepFace.analyze(img_path=filename, actions=["emotion"], enforce_detection=False)
         emotion = result[0]["dominant_emotion"]
+        return JSONResponse(content={"emotion": emotion})
     except Exception as e:
-        return JSONResponse(content={"error": str(e)})
+        return JSONResponse(content={"error": str(e)}, status_code=500)
     finally:
-        # Delete the temporary file
         os.remove(filename)
-
-    return JSONResponse(content={"emotion": emotion})
