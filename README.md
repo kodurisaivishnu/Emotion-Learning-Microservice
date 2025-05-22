@@ -36,11 +36,7 @@ https://auth-service-k5aq.onrender.com/api/auth
 - cookie-parser
 - dotenv
 
-## 📄 License
 
-MIT
-
----
 
 > Part of the Emotion Learning Microservice Architecture.
 
@@ -397,13 +393,5 @@ This API is optimized for:
 - **Continuous emotion logging systems**
 - **Interactive emotion-based applications**
 
-## 📞 Support
 
-For issues, questions, or contributions, please create an issue in the GitHub repository.
-
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
----
 **Built with ❤️ for real-time emotion detection applications**
