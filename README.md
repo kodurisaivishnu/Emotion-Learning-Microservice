@@ -395,3 +395,88 @@ This API is optimized for:
 
 
 **Built with ❤️ for real-time emotion detection applications**
+
+
+
+# 📊 Analytics Service
+
+This is a Node.js-based analytics microservice that logs students' emotion and attention data, processes it in batches every 2 minutes, and generates session-wise and daily summaries.
+
+## 🌐 Live API
+
+🔗 **Base URL:** [https://analytics-service-47zl.onrender.com](https://analytics-service-47zl.onrender.com)
+
+---
+
+## 📦 Features
+
+- Accepts real-time emotion and attention logs from students.
+- Aggregates logs into session summaries (every 2 minutes).
+- Maintains daily summaries for each student.
+- Calculates dominant emotions and emotion frequency breakdowns.
+
+---
+
+## 📁 API Endpoints
+
+### ➕ POST `/api/logs/emotion`
+
+Log a student's emotion and attention data.
+
+#### Request Body
+
+```json
+{
+  "studentId": "stu123",
+  "emotion": "happy",
+  "attention": 85,
+  "timestamp": "2025-05-22T15:30:00Z"
+}
+
+✅ timestamp should be in ISO format and within the last 2 minutes for batch processing to work.
+
+📊 GET /api/stats/session/:studentId
+Returns the latest session summary for a student.
+
+📅 GET /api/stats/daily/:studentId
+Returns the daily summary for a student.
+
+🛠️ How It Works
+Emotion Logs are saved via the /api/logs/emotion endpoint.
+
+A background job runs every 2 minutes:
+
+Fetches logs from the last 2 minutes.
+
+Groups them by student.
+
+Calculates session stats: average attention, dominant emotion, emotion breakdown.
+
+Updates SessionSummary and DailyStudentSummary collections.
+
+🧪 Example cURL Test
+curl -X POST https://analytics-service-47zl.onrender.com/api/logs/emotion \
+  -H "Content-Type: application/json" \
+  -d '{
+    "studentId": "stu123",
+    "emotion": "happy",
+    "attention": 85,
+    "timestamp": "2025-05-22T15:30:00Z"
+  }'
+
+🧰 Tech Stack
+> Node.js
+
+> Express
+
+> MongoDB
+
+> Mongoose
+
+> Moment.js
+
+🚀 Deployment
+The service is deployed on Render and automatically processes logs every 2 minutes.
+
+📬 Contact
+For any questions or issues, please raise an issue in this repository.
