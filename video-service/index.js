@@ -11,6 +11,9 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true })); //needed for form-data fleids
 
+app.get('/',(req,res)=>{res.send("app is live......✅")});
+
+
 // console.log("debug index",process.env.CLOUDINARY_API_KEY);
 app.use('/api', videoRoutes);
 
