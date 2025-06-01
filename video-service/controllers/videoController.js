@@ -1,28 +1,36 @@
 import Video from '../models/Video.js';
-import { uploadVideoToCloudinary } from '../services/cloudinaryService.js';
+
+
+
+import { uploadVideoToCloudinary, uploadThumbnailToCloudinary } from '../services/cloudinaryService.js';
 
 export const handleUpload = async (req, res) => {
-  const { email, name, role, videoType, topic, videoTitle, tags } = req.body;
+  const { email, name, role, type, topic, videoTitle, tags } = req.body;
 
   if (role !== 'teacher') {
     return res.status(403).json({ error: 'Only teachers can upload videos' });
   }
 
-  if (!req.file) {
-    return res.status(400).json({ error: 'No video file uploaded' });
+  if (!req.files?.video?.[0] || !req.files?.thumbnail?.[0]) {
+    return res.status(400).json({ error: 'Video and thumbnail files are required' });
   }
 
   try {
-    const { url, publicId, duration } = await uploadVideoToCloudinary(req.file.path);
+    // Upload video
+    const videoResult = await uploadVideoToCloudinary(req.files.video[0].path);
+
+    // Upload thumbnail
+    const thumbnailUrl = await uploadThumbnailToCloudinary(req.files.thumbnail[0].path);
 
     const newVideo = new Video({
-      cloudinaryUrl: url,
-      publicId,
+      cloudinaryUrl: videoResult.url,
+      publicId: videoResult.publicId,
+      duration: videoResult.duration,
+      thumbnailUrl,
       title: videoTitle,
       topic,
-      type: videoType,
+      type,
       tags: tags ? tags.split(',').map(tag => tag.trim().toLowerCase()) : [],
-      duration,
       uploadedBy: { email, name, role }
     });
 
@@ -32,6 +40,8 @@ export const handleUpload = async (req, res) => {
     res.status(500).json({ error: 'Upload failed', details: err.message });
   }
 };
+
+
 
 //further add elastic-search whih is optimized thing
 export const listVideos = async (req, res) => {

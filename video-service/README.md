@@ -52,7 +52,7 @@ The following environment variables are used in the service:
 
 ```env
 PORT=6000
-MONGODB_URI=mongodbmongodb.net/emotionDB?retryWrites=true&w=majority&
+MONGODB_URI=mongodbmongodb.net/
 CLOUDINARY_CLOUD_NAME=xxxxxxxx
 CLOUDINARY_API_KEY=11111111111111
 CLOUDINARY_API_SECRET=4xxxxxxxxxxxxxxxxxxx
@@ -102,15 +102,18 @@ CLOUDINARY_API_SECRET=4xxxxxxxxxxxxxxxxxxx
 #### Sample cURL:
 
 ```bash
-curl -X POST https://video-service-w4ir.onrender.com/api/upload \
+curl -X POST http://localhost:6000/api/upload \
   -H "Content-Type: multipart/form-data" \
-  -F "video=@\"/path/to/video.mp4\"" \
+  -F "video=@C:/Users/KODURI SAI VISHNU/Videos/sample.mp4" \
+  -F "thumbnail=@C:/Users/KODURI SAI VISHNU/Downloads/sample.png" \
+  -F "videoTitle=Graph Algorithms" \
+  -F "topic=Data Structures" \
+  -F "type=DSA" \
+  -F "tags=graph,dfs,bfs" \
   -F "email=teacher1@example.com" \
   -F "role=teacher" \
-  -F "videoTitle=Intro to Trees" \
-  -F "topic=React Basics" \
-  -F "videoType=Frontend" \
-  -F "tags=dsa,tree,dfs,bfs"
+  -F "name=Sai Vishnu"
+
 ```
 
 ---
