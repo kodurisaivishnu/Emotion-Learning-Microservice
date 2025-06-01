@@ -1,25 +1,38 @@
-📬 Notification Service
-This is a simple microservice built with Node.js, Express, and Nodemailer to send email notifications.
-It receives an email payload from the frontend and sends an email using Gmail credentials.
+# 📬 Notification Service
 
-🌐 Deployed Link
-Base URL:
-https://notification-service-qaxu.onrender.com
+This is a simple microservice built with **Node.js**, **Express**, and **Nodemailer** to send email notifications.  
+It receives email data from a frontend and sends it using configured Gmail credentials.
 
-📩 API Endpoint
-POST /api/send-email
-Sends an email notification.
+---
 
-✅ Request Body (JSON)
+## 🌐 Deployed Link
 
+**Base URL**:  
+[https://notification-service-qaxu.onrender.com](https://notification-service-qaxu.onrender.com)
+
+---
+
+## 📩 API Endpoint
+
+### `POST /api/send-email`
+
+Sends an email notification using the payload provided.
+
+#### ✅ Request Body (JSON)
+
+```json
 {
   "to": "recipient@example.com",
   "subject": "Email Subject",
   "message": "Body content of the email"
 }
-🔄 Example
+```
 
+---
 
+## 🔄 Example Request
+
+```http
 POST https://notification-service-qaxu.onrender.com/api/send-email
 Content-Type: application/json
 
@@ -28,43 +41,59 @@ Content-Type: application/json
   "subject": "Student Warning",
   "message": "Student Rahul Verma did not attend the class properly."
 }
-🟢 Successful Response
+```
 
+---
+
+## 🟢 Successful Response
+
+```json
 {
   "success": true,
   "message": "Email sent successfully"
 }
-🔴 Error Response
+```
 
+## 🔴 Error Response
+
+```json
 {
   "success": false,
   "error": "Failed to send email"
 }
-🔐 Environment Variables (.env)
+```
 
+---
+
+## 🔐 Environment Variables (`.env`)
+
+```env
 EMAIL=your_email@gmail.com
 EMAIL_PASS=your_app_password
-EMAIL – The Gmail address used to send emails
+```
 
-EMAIL_PASS – The App Password generated for your Gmail account
+- `EMAIL`: The Gmail address used to send emails  
+- `EMAIL_PASS`: The [App Password](https://myaccount.google.com/apppasswords) generated from your Gmail account
 
-🔐 Do not use your actual Gmail password. Use an App Password (2FA required).
+> ⚠️ **Do not use your regular Gmail password.** Use an App Password generated from your Google account with 2-Step Verification enabled.
 
-📦 Tech Stack
-Node.js
+---
 
-Express.js
+## 📦 Tech Stack
 
-Nodemailer
+- Node.js  
+- Express.js  
+- Nodemailer  
+- dotenv  
+- CORS
 
-dotenv
+---
 
-CORS
+## 🧪 How to Test
 
-🧪 How to Test
-You can use Postman, Thunder Client, or any frontend app to test this:
+You can test this API using **Postman**, **Thunder Client**, or any frontend code like this:
 
-
+```js
 fetch('https://notification-service-qaxu.onrender.com/api/send-email', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
@@ -74,3 +103,15 @@ fetch('https://notification-service-qaxu.onrender.com/api/send-email', {
     message: 'This is a test email sent from the notification service.'
   })
 });
+```
+
+---
+
+## 🚀 Future Improvements
+
+- Support for file attachments  
+- HTML email templates  
+- Telegram notifications  
+- Scheduled or batch emails  
+- Retry mechanism for failed deliveries
+```
