@@ -52,10 +52,10 @@ The following environment variables are used in the service:
 
 ```env
 PORT=6000
-MONGODB_URI=mongodb+srv://kodurisaivishnu:0jfqSFHbqvIFRP8j@emotion-learning-platfo.dwfkusf.mongodb.net/emotionDB?retryWrites=true&w=majority&appName=Emotion-Learning-Platform
-CLOUDINARY_CLOUD_NAME=dc8klavwd
-CLOUDINARY_API_KEY=314556432849196
-CLOUDINARY_API_SECRET=4ieY73u5hJFidcOIDjUmmc8yJGU
+MONGODB_URI=mongodbmongodb.net/emotionDB?retryWrites=true&w=majority&
+CLOUDINARY_CLOUD_NAME=xxxxxxxx
+CLOUDINARY_API_KEY=11111111111111
+CLOUDINARY_API_SECRET=4xxxxxxxxxxxxxxxxxxx
 ```
 
 ---
@@ -195,23 +195,6 @@ RUN npm install
 COPY . .
 EXPOSE 6000
 CMD ["node", "index.js"]
-```
-
-### Docker Compose (Optional)
-
-```yaml
-version: '3.9'
-services:
-  video-service:
-    build: .
-    ports:
-      - "6000:6000"
-    environment:
-      - PORT=6000
-      - MONGODB_URI=your_mongo_uri
-      - CLOUDINARY_CLOUD_NAME=your_cloud_name
-      - CLOUDINARY_API_KEY=your_api_key
-      - CLOUDINARY_API_SECRET=your_api_secret
 ```
 
 ---
