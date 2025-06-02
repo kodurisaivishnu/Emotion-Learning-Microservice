@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: nginx-api-gateway
+    env: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    buildCommand: echo "Build complete"
+    startCommand: ./start-nginx.sh
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: 10000
+    disk:
+      name: nginx-logs
+      mountPath: /app/logs
+      sizeGB: 1

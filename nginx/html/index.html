@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Microservices API Gateway</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      color: white;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 15px;
+      padding: 30px;
+      backdrop-filter: blur(10px);
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 30px;
+      font-size: 2.5rem;
+    }
+
+    .services {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+      margin-top: 30px;
+    }
+
+    .service {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      padding: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .service h3 {
+      margin-top: 0;
+      color: #ffd700;
+    }
+
+    .endpoint {
+      background: rgba(0, 0, 0, 0.2);
+      padding: 10px;
+      border-radius: 5px;
+      margin: 10px 0;
+      font-family: 'Courier New', monospace;
+    }
+
+    .method {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 3px;
+      font-size: 0.8rem;
+      font-weight: bold;
+      margin-right: 10px;
+    }
+
+    .get {
+      background: #4CAF50;
+    }
+
+    .post {
+      background: #2196F3;
+    }
+
+    .put {
+      background: #FF9800;
+    }
+
+    .patch {
+      background: #9C27B0;
+    }
+
+    .delete {
+      background: #F44336;
+    }
+
+    .status {
+      text-align: center;
+      padding: 20px;
+      background: rgba(76, 175, 80, 0.2);
+      border-radius: 10px;
+      margin-bottom: 20px;
+    }
+
+    .health-check {
+      display: inline-block;
+      background: #4CAF50;
+      color: white;
+      padding: 10px 20px;
+      text-decoration: none;
+      border-radius: 5px;
+      margin: 10px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>🚀 Microservices API Gateway</h1>
+
+    <div class="status">
+      <h2>System Status: Online</h2>
+      <a href="/health" class="health-check">Health Check</a>
+      <a href="/api/auth/check" class="health-check">Auth Check</a>
+    </div>
+
+    <div class="services">
+      <div class="service">
+        <h3>🔐 Authentication Service</h3>
+        <div class="endpoint">
+          <span class="method post">POST</span>/api/auth/register
+        </div>
+        <div class="endpoint">
+          <span class="method post">POST</span>/api/auth/login
+        </div>
+        <div class="endpoint">
+          <span class="method post">POST</span>/api/auth/logout
+        </div>
+        <div class="endpoint">
+          <span class="method get">GET</span>/api/auth/check
+        </div>
+        <div class="endpoint">
+          <span class="method put">PUT</span>/api/auth/update
+        </div>
+      </div>
+
+      <div class="service">
+        <h3>😊 Emotion Detection Service</h3>
+        <div class="endpoint">
+          <span class="method post">POST</span>/api/emotion-service
+        </div>
+        <p>Accepts image files (JPG/PNG) and returns emotion analysis</p>
+      </div>
+
+      <div class="service">
+        <h3>📊 Analytics Service</h3>
+        <div class="endpoint">
+          <span class="method post">POST</span>/api/logs/emotion
+        </div>
+        <p>Logs student emotion and attention data with batch processing</p>
+      </div>
+
+      <div class="service">
+        <h3>📧 Notification Service</h3>
+        <div class="endpoint">
+          <span class="method post">POST</span>/api/send-email
+        </div>
+        <p>Sends email notifications using Gmail SMTP</p>
+      </div>
+
+      <div class="service">
+        <h3>🎥 Video Service</h3>
+        <div class="endpoint">
+          <span class="method post">POST</span>/api/upload
+        </div>
+        <div class="endpoint">
+          <span class="method get">GET</span>/api/videos
+        </div>
+        <div class="endpoint">
+          <span class="method patch">PATCH</span>/api/videos/:id/like
+        </div>
+        <div class="endpoint">
+          <span class="method patch">PATCH</span>/api/videos/:id/view
+        </div>
+      </div>
+    </div>
+
+    <div style="text-align: center; margin-top: 30px; opacity: 0.8;">
+      <p>All services are proxied through Nginx for optimal performance and security</p>
+      <p>Server running on port 10000</p>
+    </div>
+  </div>
+</body>
+
+</html>
