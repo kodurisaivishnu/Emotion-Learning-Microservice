@@ -275,13 +275,27 @@ app.all('/api/*', (req, res) => {
   });
 });
 
-// Serve static files in production
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static('public'));
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+// Root endpoint for basic info
+app.get('/', (req, res) => {
+  res.json({
+    name: 'Nginx Microservices Proxy',
+    version: '1.0.0',
+    status: 'running',
+    endpoints: {
+      health: '/api/health',
+      services: '/api/services',
+      logs: '/api/logs'
+    },
+    microservices: [
+      '/api/auth/*',
+      '/api/emotion-service',
+      '/api/logs/*',
+      '/api/send-email',
+      '/api/upload',
+      '/api/videos/*'
+    ]
   });
-}
+});
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Nginx Proxy Server running on port ${PORT}`);
