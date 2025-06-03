@@ -426,12 +426,31 @@ const SERVICES = {
 // Logging storage
 const proxyLogs = []
 
-// Enhanced proxy function that handles both JSON and form-data
+// Enhanced proxy function with better debugging
 async function proxyRequest(req, res, targetUrl, serviceName, files = null) {
   const startTime = Date.now()
 
   try {
-    console.log(`Proxying ${req.method} ${req.path} to ${targetUrl}`)
+    console.log(`\n=== PROXY REQUEST DEBUG ===`)
+    console.log(`Service: ${serviceName}`)
+    console.log(`Method: ${req.method}`)
+    console.log(`Target URL: ${targetUrl}`)
+    console.log(`Original Content-Type: ${req.headers["content-type"]}`)
+    console.log(`Files received:`, files ? files.length : 0)
+
+    if (files && files.length > 0) {
+      files.forEach((file, index) => {
+        console.log(`File ${index}:`, {
+          fieldname: file.fieldname,
+          originalname: file.originalname,
+          mimetype: file.mimetype,
+          size: file.size,
+        })
+      })
+    }
+
+    console.log(`Body keys:`, Object.keys(req.body))
+    console.log(`Body:`, req.body)
 
     const headers = {
       "User-Agent": "Nginx-Proxy-Server/1.0",
@@ -448,7 +467,6 @@ async function proxyRequest(req, res, targetUrl, serviceName, files = null) {
     const fetchOptions = {
       method: req.method,
       headers,
-      // Add longer timeout - AbortController with 60 second timeout
       signal: AbortSignal.timeout(60000), // 60 seconds timeout
     }
 
@@ -458,8 +476,9 @@ async function proxyRequest(req, res, targetUrl, serviceName, files = null) {
         // Handle multipart/form-data
         const formData = new FormData()
 
-        // Add files
+        // Add files first
         files.forEach((file) => {
+          console.log(`Adding file to FormData: ${file.fieldname} -> ${file.originalname}`)
           formData.append(file.fieldname, file.buffer, {
             filename: file.originalname,
             contentType: file.mimetype,
@@ -468,26 +487,40 @@ async function proxyRequest(req, res, targetUrl, serviceName, files = null) {
 
         // Add other form fields
         Object.keys(req.body).forEach((key) => {
-          formData.append(key, req.body[key])
+          if (req.body[key] !== undefined && req.body[key] !== null) {
+            console.log(`Adding form field: ${key} -> ${req.body[key]}`)
+            formData.append(key, req.body[key])
+          }
         })
 
         fetchOptions.body = formData
-        // Don't set Content-Type header - let FormData set it with boundary
+        console.log(`FormData created with headers:`, formData.getHeaders())
+
+        // Let FormData set the Content-Type with boundary
+        // Don't manually set Content-Type for multipart data
       } else if (req.headers["content-type"]?.includes("application/json")) {
         // Handle JSON data
         headers["Content-Type"] = "application/json"
         fetchOptions.body = JSON.stringify(req.body)
+        console.log(`Using JSON body:`, req.body)
       } else {
         // Handle other content types
         headers["Content-Type"] = req.headers["content-type"] || "application/json"
         fetchOptions.body = JSON.stringify(req.body)
+        console.log(`Using default JSON body:`, req.body)
       }
     }
 
-    console.log(`[${serviceName}] Sending request to ${targetUrl}, waiting up to 60 seconds...`)
+    console.log(`Final headers being sent:`, headers)
+    console.log(`Sending request...`)
+
     const response = await fetch(targetUrl, fetchOptions)
     const responseTime = Date.now() - startTime
-    console.log(`[${serviceName}] Response received in ${responseTime}ms with status ${response.status}`)
+
+    console.log(`Response received:`)
+    console.log(`Status: ${response.status}`)
+    console.log(`Response Time: ${responseTime}ms`)
+    console.log(`Response Headers:`, Object.fromEntries(response.headers.entries()))
 
     // Log the request
     proxyLogs.unshift({
@@ -498,6 +531,7 @@ async function proxyRequest(req, res, targetUrl, serviceName, files = null) {
       statusCode: response.status,
       responseTime,
       timestamp: new Date().toISOString(),
+      filesCount: files ? files.length : 0,
     })
 
     // Keep only last 100 logs
@@ -510,27 +544,35 @@ async function proxyRequest(req, res, targetUrl, serviceName, files = null) {
     const contentType = response.headers.get("content-type")
     if (contentType?.includes("application/json")) {
       const data = await response.json()
+      console.log(`Response JSON:`, data)
       res.json(data)
     } else {
       const text = await response.text()
+      console.log(`Response Text:`, text.substring(0, 200))
       res.send(text)
     }
+
+    console.log(`=== END PROXY REQUEST ===\n`)
   } catch (error) {
     const responseTime = Date.now() - startTime
-    console.error(`Proxy error for ${serviceName} after ${responseTime}ms:`, error.message)
+    console.error(`\n=== PROXY ERROR ===`)
+    console.error(`Service: ${serviceName}`)
+    console.error(`Error after ${responseTime}ms:`, error.message)
+    console.error(`Error name:`, error.name)
+    console.error(`Error stack:`, error.stack)
+    console.error(`=== END PROXY ERROR ===\n`)
 
     proxyLogs.unshift({
       id: Date.now(),
       method: req.method,
       path: req.path,
       targetService: serviceName,
-      statusCode: 504, // Gateway Timeout instead of 502
+      statusCode: error.name === "TimeoutError" || error.name === "AbortError" ? 504 : 502,
       responseTime,
       timestamp: new Date().toISOString(),
       error: error.message,
     })
 
-    // Check if it's a timeout error
     if (error.name === "TimeoutError" || error.name === "AbortError") {
       res.status(504).json({
         error: "Gateway Timeout",
@@ -621,6 +663,23 @@ app.get("/api/logs", (req, res) => {
   res.json(proxyLogs.slice(0, limit))
 })
 
+// Debug endpoint to test file uploads
+app.post("/api/debug-upload", upload.any(), (req, res) => {
+  console.log("\n=== DEBUG UPLOAD ===")
+  console.log("Files:", req.files)
+  console.log("Body:", req.body)
+  console.log("Headers:", req.headers)
+  console.log("=== END DEBUG ===\n")
+
+  res.json({
+    message: "Debug upload endpoint",
+    filesReceived: req.files ? req.files.length : 0,
+    files: req.files,
+    body: req.body,
+    headers: req.headers,
+  })
+})
+
 // Auth Service Proxy (JSON only)
 app.all("/api/auth/*", express.json({ limit: "50mb" }), async (req, res) => {
   const targetUrl = `${SERVICES.auth}${req.path}${req.url.includes("?") ? req.url.substring(req.url.indexOf("?")) : ""}`
@@ -628,8 +687,19 @@ app.all("/api/auth/*", express.json({ limit: "50mb" }), async (req, res) => {
 })
 
 // Emotion Detection Service Proxy (handles both JSON and form-data)
-app.all("/api/emotion-service", upload.any(), async (req, res) => {
+app.all("/api/emotion-service*", upload.any(), async (req, res) => {
+  console.log(`\n=== EMOTION SERVICE REQUEST ===`)
+  console.log(`Full URL: ${req.url}`)
+  console.log(`Path: ${req.path}`)
+  console.log(`Method: ${req.method}`)
+  console.log(`Content-Type: ${req.headers["content-type"]}`)
+  console.log(`Files: ${req.files ? req.files.length : 0}`)
+  console.log(`Body: ${JSON.stringify(req.body)}`)
+
   const targetUrl = `${SERVICES.emotion}${req.path}${req.url.includes("?") ? req.url.substring(req.url.indexOf("?")) : ""}`
+  console.log(`Target URL: ${targetUrl}`)
+  console.log(`=== END EMOTION SERVICE REQUEST ===\n`)
+
   await proxyRequest(req, res, targetUrl, "emotion", req.files)
 })
 
@@ -682,6 +752,7 @@ app.get("/", (req, res) => {
       health: "/api/health",
       services: "/api/services",
       logs: "/api/logs",
+      debug: "/api/debug-upload",
     },
     microservices: [
       "/api/auth/*",
@@ -697,4 +768,5 @@ app.get("/", (req, res) => {
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Nginx Proxy Server running on port ${PORT}`)
   console.log(`📍 Health check: http://localhost:${PORT}/api/health`)
+  console.log(`📍 Debug upload: http://localhost:${PORT}/api/debug-upload`)
 })
