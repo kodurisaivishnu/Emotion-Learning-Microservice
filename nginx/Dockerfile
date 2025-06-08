@@ -5,7 +5,8 @@ FROM nginx:alpine
 RUN mkdir -p /var/log/nginx && \
     mkdir -p /var/cache/nginx && \
     chmod -R 755 /var/log/nginx && \
-    chmod -R 755 /var/cache/nginx
+    chmod -R 755 /var/cache/nginx && \
+    rm -f /etc/nginx/conf.d/default.conf  # Remove default config to avoid conflicts
 
 # Copy custom nginx configuration
 COPY nginx.conf /etc/nginx/nginx.conf
