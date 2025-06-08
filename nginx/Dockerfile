@@ -1,18 +1,18 @@
-# Use official NGINX Alpine image for smaller size
+# Use official NGINX Alpine image
 FROM nginx:alpine
 
-# Create necessary directories and set permissions
+# Create necessary directories
 RUN mkdir -p /var/log/nginx && \
-    mkdir -p /var/cache/nginx && \
-    chmod -R 755 /var/log/nginx && \
-    chmod -R 755 /var/cache/nginx && \
-    rm -f /etc/nginx/conf.d/default.conf  # Remove default config to avoid conflicts
+    mkdir -p /etc/nginx/conf.d
 
-# Copy custom nginx configuration
+# Copy custom configuration
 COPY nginx.conf /etc/nginx/nginx.conf
+
+# Verify the copy worked
+RUN ls -la /etc/nginx/
 
 # Expose port 80
 EXPOSE 80
 
-# Start NGINX in foreground
+# Start NGINX
 CMD ["nginx", "-g", "daemon off;"]
