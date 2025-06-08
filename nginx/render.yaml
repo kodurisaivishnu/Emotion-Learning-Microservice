@@ -9,20 +9,5 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PORT
-        fromService:
-          type: web
-          name: nginx-reverse-proxy
-          property: port
     healthCheckPath: /health
     autoDeploy: true
-    disk:
-      name: nginx-logs
-      mountPath: /app/logs
-      sizeGB: 1
-
-# Optional: Database service if needed for logging
-# databases:
-#   - name: postgres-db
-#     plan: free
-#     databaseName: proxy_logs
