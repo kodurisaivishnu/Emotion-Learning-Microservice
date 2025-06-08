@@ -15,8 +15,22 @@ services:
   - type: web
     name: nginx-proxy
     runtime: docker
-    dockerfilePath: Dockerfile  # Explicitly specify path
     plan: free
+    region: oregon  # Choose your preferred region
+    branch: main    # Specify your git branch
+    dockerfilePath: ./Dockerfile
+    dockerContext: ./
+    
+    # Environment variables
     envVars:
       - key: NGINX_ENV
         value: production
+      
+    # Health check configuration
+    healthCheckPath: /health
+    
+    # Custom start command (optional, dockerfile CMD will be used by default)
+    # startCommand: nginx -g 'daemon off;'
+    
+    # Auto-deploy settings
+    autoDeploy: true
