@@ -1,36 +1,28 @@
-# services:
-#   - type: web
-#     name: nginx-microservices-proxy
-#     env: node
-#     plan: free
-#     buildCommand: npm install
-#     startCommand: npm start
-#     envVars:
-#       - key: NODE_ENV
-#         value: production
-#       - key: PORT
-#         value: 10000
-
+# Render Blueprint Configuration
 services:
   - type: web
-    name: nginx-proxy
-    runtime: docker
+    name: nginx-reverse-proxy
+    env: node
     plan: free
-    region: oregon  # Choose your preferred region
-    branch: main    # Specify your git branch
-    dockerfilePath: ./Dockerfile
-    dockerContext: ./
-    
-    # Environment variables
+    buildCommand: npm install
+    startCommand: npm start
     envVars:
-      - key: NGINX_ENV
+      - key: NODE_ENV
         value: production
-      
-    # Health check configuration
+      - key: PORT
+        fromService:
+          type: web
+          name: nginx-reverse-proxy
+          property: port
     healthCheckPath: /health
-    
-    # Custom start command (optional, dockerfile CMD will be used by default)
-    # startCommand: nginx -g 'daemon off;'
-    
-    # Auto-deploy settings
     autoDeploy: true
+    disk:
+      name: nginx-logs
+      mountPath: /app/logs
+      sizeGB: 1
+
+# Optional: Database service if needed for logging
+# databases:
+#   - name: postgres-db
+#     plan: free
+#     databaseName: proxy_logs

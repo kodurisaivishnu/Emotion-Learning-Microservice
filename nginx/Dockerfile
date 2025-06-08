@@ -1,18 +1,32 @@
-# Use official NGINX Alpine image
-FROM nginx:alpine
+# Dockerfile for containerized deployment (optional)
+FROM node:18-alpine
 
-# Create necessary directories
-RUN mkdir -p /var/log/nginx && \
-    mkdir -p /etc/nginx/conf.d
+# Set working directory
+WORKDIR /app
 
-# Copy custom configuration
-COPY nginx.conf /etc/nginx/nginx.conf
+# Copy package files
+COPY package*.json ./
 
-# Verify the copy worked
-RUN ls -la /etc/nginx/
+# Install dependencies
+RUN npm ci --only=production
 
-# Expose port 80
-EXPOSE 80
+# Copy application code
+COPY . .
 
-# Start NGINX
-CMD ["nginx", "-g", "daemon off;"]
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs
+RUN adduser -S nextjs -u 1001
+
+# Change ownership
+RUN chown -R nextjs:nodejs /app
+USER nextjs
+
+# Expose port
+EXPOSE 5000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD node health-check.js
+
+# Start application
+CMD ["npm", "start"]

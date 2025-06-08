@@ -858,210 +858,278 @@
 // })
 
 
-const express = require("express");
-const cors = require("cors");
-const multer = require("multer");
-const FormData = require("form-data");
-const path = require("path");
-const fetch = require("node-fetch");
-const AbortController = require('abort-controller');
+
+const express = require('express');
+const cors = require('cors');
+const helmet = require('helmet');
+const morgan = require('morgan');
+const { createProxyMiddleware } = require('http-proxy-middleware');
+const cookieParser = require('cookie-parser');
+const compression = require('compression');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5000;
 
-// Configure multer for handling multipart/form-data
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: {
-    fileSize: 500 * 1024 * 1024, // 500MB limit
+// Middleware setup
+app.use(compression());
+app.use(cookieParser());
+app.use(morgan('combined'));
+
+// CORS configuration - allow all origins as requested
+app.use(cors({
+  origin: true, // Allow all origins
+  credentials: true, // Allow cookies to be included
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: [
+    'DNT',
+    'User-Agent',
+    'X-Requested-With',
+    'If-Modified-Since',
+    'Cache-Control',
+    'Content-Type',
+    'Range',
+    'Authorization',
+    'Accept',
+    'Origin',
+    'X-CSRF-Token'
+  ],
+  exposedHeaders: ['Content-Length', 'Content-Range', 'Set-Cookie']
+}));
+
+// Security headers with relaxed CSP for development
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "http:", "https:", "data:", "blob:"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https:"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https:"],
+      imgSrc: ["'self'", "data:", "https:", "http:", "blob:"],
+      connectSrc: ["'self'", "https:", "http:", "ws:", "wss:"]
+    }
   },
-});
+  crossOriginEmbedderPolicy: false
+}));
 
-// Middleware - Allow all origins
-app.use(
-  cors({
-    origin: "*",
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "Cookie", "Range"],
-    exposedHeaders: ["Content-Length", "Content-Range"],
-    credentials: true,
-  })
-);
-
-// Security headers
+// Custom headers for better compatibility
 app.use((req, res, next) => {
-  res.setHeader("X-Content-Type-Options", "nosniff");
-  res.setHeader("X-Frame-Options", "DENY");
-  res.setHeader("X-XSS-Protection", "1; mode=block");
-  res.removeHeader("X-Powered-By");
+  res.header('X-Frame-Options', 'SAMEORIGIN');
+  res.header('X-XSS-Protection', '1; mode=block');
+  res.header('X-Content-Type-Options', 'nosniff');
+  res.header('Referrer-Policy', 'no-referrer-when-downgrade');
+  
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    res.header('Access-Control-Max-Age', '86400'); // 24 hours
+    return res.status(204).end();
+  }
+  
   next();
 });
 
-// Increase timeout to 3 minutes for all requests
+// Rate limiting middleware (simple implementation)
+const rateLimitMap = new Map();
+const RATE_LIMIT_WINDOW = 60000; // 1 minute
+const RATE_LIMIT_MAX = 600; // 600 requests per minute
+
 app.use((req, res, next) => {
-  req.setTimeout(180000, () => {
-    console.error('Request timeout');
-  });
-  next();
-});
-
-// Microservice URLs
-const SERVICES = {
-  auth: process.env.AUTH_SERVICE_URL || "https://auth-service-k5aq.onrender.com",
-  emotion: process.env.EMOTION_SERVICE_URL || "https://emotion-learning-microservice.onrender.com",
-  analytics: process.env.ANALYTICS_SERVICE_URL || "https://analytics-service-47zl.onrender.com",
-  notification: process.env.NOTIFICATION_SERVICE_URL || "https://notification-service-qaxu.onrender.com",
-  video: process.env.VIDEO_SERVICE_URL || "https://video-service-w4ir.onrender.com",
-};
-
-// Enhanced proxy function with 3-minute timeout
-async function proxyRequest(req, res, targetUrl, serviceName, files = null) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 180000); // 3 minutes timeout
-
-  try {
-    const headers = {
-      "User-Agent": "Proxy-Server/1.0",
-      "Accept": "*/*",
-    };
-
-    // Copy important headers
-    const forwardHeaders = [
-      "authorization", "cookie", "content-type", "content-length", 
-      "accept", "accept-encoding", "accept-language", "range"
-    ];
-
-    forwardHeaders.forEach(header => {
-      if (req.headers[header]) {
-        headers[header] = req.headers[header];
-      }
-    });
-
-    const fetchOptions = {
-      method: req.method,
-      headers,
-      signal: controller.signal,
-    };
-
-    // Handle different content types
-    if (req.method !== "GET" && req.method !== "HEAD") {
-      if (files && files.length > 0) {
-        // Handle multipart/form-data
-        const formData = new FormData();
-
-        // Add files
-        files.forEach((file) => {
-          formData.append(file.fieldname, file.buffer, {
-            filename: file.originalname,
-            contentType: file.mimetype,
-          });
-        });
-
-        // Add other form fields
-        Object.keys(req.body).forEach((key) => {
-          if (req.body[key] !== undefined && req.body[key] !== null) {
-            formData.append(key, req.body[key]);
-          }
-        });
-
-        fetchOptions.body = formData;
-      } else if (req.headers["content-type"]?.includes("application/json")) {
-        // Handle JSON data
-        headers["Content-Type"] = "application/json";
-        fetchOptions.body = JSON.stringify(req.body);
-      } else {
-        // Handle other content types
-        headers["Content-Type"] = req.headers["content-type"] || "application/json";
-        fetchOptions.body = JSON.stringify(req.body);
-      }
-    }
-
-    const response = await fetch(targetUrl, fetchOptions);
-    clearTimeout(timeout);
-
-    // Forward response headers
-    const responseHeaders = [
-      "content-type", "content-length", "content-range",
-      "set-cookie", "cache-control", "etag", "last-modified"
-    ];
-
-    responseHeaders.forEach(header => {
-      if (response.headers.get(header)) {
-        res.setHeader(header, response.headers.get(header));
-      }
-    });
-
-    // Set CORS headers
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("Access-Control-Allow-Credentials", "true");
-
-    // Stream the response
-    if (response.body) {
-      response.body.pipe(res);
+  const clientIp = req.ip || req.connection.remoteAddress;
+  const now = Date.now();
+  
+  if (!rateLimitMap.has(clientIp)) {
+    rateLimitMap.set(clientIp, { count: 1, resetTime: now + RATE_LIMIT_WINDOW });
+  } else {
+    const limit = rateLimitMap.get(clientIp);
+    if (now > limit.resetTime) {
+      limit.count = 1;
+      limit.resetTime = now + RATE_LIMIT_WINDOW;
     } else {
-      const text = await response.text();
-      res.status(response.status).send(text);
-    }
-  } catch (error) {
-    clearTimeout(timeout);
-    console.error(`Proxy error for ${serviceName}:`, error);
-
-    if (error.name === "AbortError") {
-      res.status(504).json({
-        error: "Gateway Timeout",
-        message: `The ${serviceName} service took too long to respond (>3min)`,
-      });
-    } else {
-      res.status(502).json({
-        error: "Bad Gateway",
-        message: `Failed to connect to ${serviceName} service`,
-        details: error.message,
-      });
+      limit.count++;
+      if (limit.count > RATE_LIMIT_MAX) {
+        return res.status(429).json({ error: 'Too many requests' });
+      }
     }
   }
-}
+  
+  next();
+});
+
+// Base proxy configuration
+const baseProxyConfig = {
+  changeOrigin: true,
+  timeout: 240000,
+  proxyTimeout: 240000,
+  secure: true,
+  followRedirects: true,
+  onProxyReq: (proxyReq, req, res) => {
+    // Preserve original headers
+    proxyReq.setHeader('X-Real-IP', req.ip || req.connection.remoteAddress);
+    proxyReq.setHeader('X-Forwarded-For', req.ip || req.connection.remoteAddress);
+    proxyReq.setHeader('X-Forwarded-Proto', req.protocol);
+    proxyReq.setHeader('X-Forwarded-Host', req.get('host'));
+    
+    // Handle cookies properly for JWT
+    if (req.headers.cookie) {
+      proxyReq.setHeader('Cookie', req.headers.cookie);
+    }
+  },
+  onProxyRes: (proxyRes, req, res) => {
+    // Handle Set-Cookie headers for JWT tokens
+    if (proxyRes.headers['set-cookie']) {
+      // Modify cookies to be visible in browser dev tools
+      const cookies = proxyRes.headers['set-cookie'].map(cookie => {
+        // Make sure HttpOnly is not set so cookies are visible in dev tools
+        return cookie.replace(/HttpOnly;?\s*/gi, '');
+      });
+      proxyRes.headers['set-cookie'] = cookies;
+    }
+    
+    // Add CORS headers to response
+    res.header('Access-Control-Allow-Credentials', 'true');
+  }
+};
 
 // Auth Service Proxy
-app.all("/api/auth/*", express.json({ limit: "500mb" }), async (req, res) => {
-  const targetUrl = `${SERVICES.auth}${req.path}${req.url.includes("?") ? req.url.substring(req.url.indexOf("?")) : ""}`;
-  await proxyRequest(req, res, targetUrl, "auth");
-});
+app.use('/api/auth', createProxyMiddleware({
+  ...baseProxyConfig,
+  target: 'https://auth-service-k5aq.onrender.com',
+  onError: (err, req, res) => {
+    console.error('Auth Proxy Error:', err.message);
+    if (!res.headersSent) {
+      res.status(502).json({ error: 'Auth service unavailable' });
+    }
+  }
+}));
 
-// Emotion Detection Service Proxy (handles file uploads)
-app.all("/api/emotion-service", upload.any(), async (req, res) => {
-  const targetUrl = `${SERVICES.emotion}${req.path}${req.url.includes("?") ? req.url.substring(req.url.indexOf("?")) : ""}`;
-  await proxyRequest(req, res, targetUrl, "emotion", req.files);
-});
+// Emotion Detection Service Proxy
+app.use('/api/emotion-service', createProxyMiddleware({
+  ...baseProxyConfig,
+  target: 'https://emotion-learning-microservice.onrender.com',
+  onError: (err, req, res) => {
+    console.error('Emotion Proxy Error:', err.message);
+    if (!res.headersSent) {
+      res.status(502).json({ error: 'Emotion service unavailable' });
+    }
+  }
+}));
 
 // Analytics Service Proxy
-app.all("/api/logs/*", express.json({ limit: "500mb" }), async (req, res) => {
-  const targetUrl = `${SERVICES.analytics}${req.path}${req.url.includes("?") ? req.url.substring(req.url.indexOf("?")) : ""}`;
-  await proxyRequest(req, res, targetUrl, "analytics");
-});
+app.use('/api/logs', createProxyMiddleware({
+  ...baseProxyConfig,
+  target: 'https://analytics-service-47zl.onrender.com',
+  onError: (err, req, res) => {
+    console.error('Analytics Proxy Error:', err.message);
+    if (!res.headersSent) {
+      res.status(502).json({ error: 'Analytics service unavailable' });
+    }
+  }
+}));
 
 // Notification Service Proxy
-app.all("/api/send-email", express.json({ limit: "500mb" }), async (req, res) => {
-  const targetUrl = `${SERVICES.notification}${req.path}${req.url.includes("?") ? req.url.substring(req.url.indexOf("?")) : ""}`;
-  await proxyRequest(req, res, targetUrl, "notification");
+app.use('/api/send-email', createProxyMiddleware({
+  ...baseProxyConfig,
+  target: 'https://notification-service-qaxu.onrender.com',
+  onError: (err, req, res) => {
+    console.error('Email Proxy Error:', err.message);
+    if (!res.headersSent) {
+      res.status(502).json({ error: 'Email service unavailable' });
+    }
+  }
+}));
+
+// Video Service Proxy - Upload
+app.use('/api/upload', createProxyMiddleware({
+  ...baseProxyConfig,
+  target: 'https://video-service-w4ir.onrender.com',
+  onError: (err, req, res) => {
+    console.error('Upload Proxy Error:', err.message);
+    if (!res.headersSent) {
+      res.status(502).json({ error: 'Upload service unavailable' });
+    }
+  }
+}));
+
+// Video Service Proxy - Videos API
+app.use('/api/videos', createProxyMiddleware({
+  ...baseProxyConfig,
+  target: 'https://video-service-w4ir.onrender.com',
+  onError: (err, req, res) => {
+    console.error('Videos Proxy Error:', err.message);
+    if (!res.headersSent) {
+      res.status(502).json({ error: 'Videos service unavailable' });
+    }
+  }
+}));
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    memory: process.memoryUsage(),
+    version: process.version
+  });
 });
 
-// Video Service Upload
-app.all("/api/upload", upload.any(), async (req, res) => {
-  const targetUrl = `${SERVICES.video}${req.path}${req.url.includes("?") ? req.url.substring(req.url.indexOf("?")) : ""}`;
-  await proxyRequest(req, res, targetUrl, "video", req.files);
+// Root endpoint
+app.get('/', (req, res) => {
+  res.json({
+    message: 'Nginx Reverse Proxy Server',
+    status: 'running',
+    services: [
+      'Auth Service: /api/auth/*',
+      'Emotion Detection: /api/emotion-service/*',
+      'Analytics: /api/logs/*',
+      'Notification: /api/send-email/*',
+      'Video Upload: /api/upload/*',
+      'Video API: /api/videos/*'
+    ],
+    health: '/health'
+  });
 });
 
-// Video Service API
-app.all("/api/videos/*", express.json({ limit: "500mb" }), async (req, res) => {
-  const targetUrl = `${SERVICES.video}${req.path}${req.url.includes("?") ? req.url.substring(req.url.indexOf("?")) : ""}`;
-  await proxyRequest(req, res, targetUrl, "video");
+// 404 handler
+app.use('*', (req, res) => {
+  res.status(404).json({
+    error: 'Not Found',
+    message: `The requested path ${req.originalUrl} was not found on this server`,
+    timestamp: new Date().toISOString()
+  });
 });
 
-// Health check
-app.get("/health", (req, res) => {
-  res.status(200).send("OK");
+// Error handler
+app.use((err, req, res, next) => {
+  console.error('Server Error:', err);
+  res.status(500).json({
+    error: 'Internal Server Error',
+    message: 'An unexpected error occurred',
+    timestamp: new Date().toISOString()
+  });
 });
 
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`🚀 Proxy Server running on port ${PORT}`);
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, shutting down gracefully');
+  process.exit(0);
 });
+
+process.on('SIGINT', () => {
+  console.log('SIGINT received, shutting down gracefully');
+  process.exit(0);
+});
+
+// Start server
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Reverse Proxy Server running on port ${PORT}`);
+  console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`📡 Health check available at: http://localhost:${PORT}/health`);
+  console.log('🔧 Configured services:');
+  console.log('  - Auth Service: /api/auth/*');
+  console.log('  - Emotion Detection: /api/emotion-service/*');
+  console.log('  - Analytics: /api/logs/*');
+  console.log('  - Notification: /api/send-email/*');
+  console.log('  - Video Upload: /api/upload/*');
+  console.log('  - Video API: /api/videos/*');
+});
+
+module.exports = app;
