@@ -16,5 +16,5 @@ services:
     name: nginx-proxy
     runtime: docker
     dockerfile: Dockerfile
-    env: docker
     plan: free
+    healthCheckPath: /health  # Required for Render free tier
