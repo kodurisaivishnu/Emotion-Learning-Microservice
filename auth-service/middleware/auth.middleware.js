@@ -3,8 +3,7 @@ import jwt from "jsonwebtoken";
 
 export const verifyAuth = (req, res, next) => {
   const token = req.cookies.jwt;
-  // console.log(req.cookies);
-
+  console.log(req.cookies,"came from berify authentication.");
   if (!token) {
     return res.status(401).json({ msg: "No token, authorization denied" });
   }
