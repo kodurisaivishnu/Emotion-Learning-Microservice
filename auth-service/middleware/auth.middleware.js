@@ -1,17 +1,18 @@
-import jwt from 'jsonwebtoken';
+// middleware/authMiddleware.js
+import jwt from "jsonwebtoken";
 
 export const verifyAuth = (req, res, next) => {
   const token = req.cookies.token;
 
   if (!token) {
-    return res.status(401).json({ message: "Unauthorized: No token provided" });
+    return res.status(401).json({ msg: "No token, authorization denied" });
   }
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded; //  Attach user info to request
+    req.user = decoded;
     next();
   } catch (err) {
-    return res.status(401).json({ message: "Unauthorized: Invalid token" });
+    res.status(401).json({ msg: "Token is not valid" });
   }
 };

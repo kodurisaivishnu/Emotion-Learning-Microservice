@@ -1,6 +1,8 @@
 import User from '../models/User.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+// import { authMiddleware } from "../middleware/authMiddleware.js";
+
 
 
 export const register = async (req, res) => {
@@ -20,36 +22,6 @@ export const register = async (req, res) => {
     res.status(500).send('Server error');
   }
 };
-
-// export const login = async (req, res) => {
-//   try {
-//     const { email, password } = req.body;
-
-//     let user = await User.findOne({ email });
-//     if (!user) return res.status(400).json({ msg: 'Invalid credentials' });
-
-//     const isMatch = await bcrypt.compare(password, user.password);
-//     if (!isMatch) return res.status(400).json({ msg: 'Invalid credentials' });
-
-//     const token = jwt.sign(
-//       { userId: user._id, role: user.role },
-//       process.env.JWT_SECRET,
-//       { expiresIn: '1h' }
-//     );
-
-//     // res.json({ token });
-//     res.cookie('token', token, {
-//       httpOnly: true,       // Prevent JavaScript access (for security)
-//       secure: process.env.NODE_ENV === 'production', // true in HTTPS
-//       sameSite: 'Strict',   // or 'Lax'/'None' based on your use case
-//       maxAge: 60 * 60 * 1000, // 1 hour
-//     })
-//     .json({ msg: 'Login successful' });
-
-//   } catch (err) {
-//     res.status(500).send('Server error');
-//   }
-// };
 
 export const login = async (req, res) => {
   try {
@@ -111,9 +83,27 @@ export const logout = (req, res) => {
 };
 
 
-export const checkAuth = (req, res) => {
+// export const checkAuth = (req, res) => {
+//   try {
+//     res.status(200).json(req.user);  
+//   } catch (error) {
+//     console.log("Error in checkAuth:", error.message);
+//     res.status(500).json({ message: "Internal server error from checkAuth" });
+//   }
+// };
+
+export const checkAuth = async (req, res) => {
   try {
-    res.status(200).json(req.user);  
+    const user = await User.findById(req.user.userId).select('-password'); // exclude password
+
+    if (!user) return res.status(404).json({ msg: 'User not found' });
+
+    res.status(200).json({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+    });
   } catch (error) {
     console.log("Error in checkAuth:", error.message);
     res.status(500).json({ message: "Internal server error from checkAuth" });
