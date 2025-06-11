@@ -114,21 +114,32 @@ export const login = async (req, res) => {
 // };
 
 
+// export const logout = (req, res) => {
+//   try {
+//     res.clearCookie("jwt", {
+//       httpOnly: true,
+//       // secure: process.env.NODE_ENV !== "development",
+//       secure: true,
+//       sameSite: "strict",
+//     });
+
+//     res.status(200).json({ message: "Logged out successfully" });
+//   } catch (error) {
+//     console.error("Error in logout controller:", error.message);
+//     res.status(500).json({ message: "Internal server error during logout" });
+//   }
+// };
+
 export const logout = (req, res) => {
   try {
-    res.clearCookie("jwt", {
-      httpOnly: true,
-      // secure: process.env.NODE_ENV !== "development",
-      secure: true,
-      sameSite: "strict",
-    });
-
+    res.cookie("jwt", "", { maxAge: 0 });
     res.status(200).json({ message: "Logged out successfully" });
   } catch (error) {
-    console.error("Error in logout controller:", error.message);
-    res.status(500).json({ message: "Internal server error during logout" });
+    console.log("Error in logout controller: ", error.message);
+    return res.status(500).json({ message: "Internal server error from logout" });
   }
 };
+
 
 
 export const checkAuth = async (req, res) => {
